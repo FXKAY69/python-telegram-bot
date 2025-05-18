@@ -1,0 +1,58 @@
+import logging
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, MessageHandler, filters
+import pandas as pd
+
+# --- Configure logging ---
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+
+# --- Your Telegram bot token ---
+TELEGRAM_BOT_TOKEN = 'AAEP5WpjgPE3ZoR6LK1Y9hM6WvwSoGhBBAQ'
+
+# --- Simulated round history ---
+round_history = [1.2, 2.3, 4.1, 1.7, 2.5, 3.4, 1.9, 1.6, 2.2, 4.5]
+
+# --- Example strategy logic ---
+def should_bet(history):
+    if len(history) < 3:
+        return False
+    last = history[-3:]
+    average = sum(last) / len(last)
+    if average < 3.0 and max(last) < 5.0:
+        return True
+    return False
+
+# --- /start command ---
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Welcome to AviatorBot!\nUse /signal to check for a bet.\nUse /add <number> to update history.")
+
+# --- /signal command ---
+async def signal(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if should_bet(round_history):
+        await update.message.reply_text("Signal: Place a bet now! (Expected under 5.00x)")
+    else:
+        await update.message.reply_text("No signal yet. Wait for a better pattern.")
+
+# --- /add command to input new round ---
+async def add(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    global round_history
+    try:
+        value = float(context.args[0])
+        round_history.append(value)
+        await update.message.reply_text(f"Added round: {value}\nUpdated history: {round_history[-10:]}")
+    except (IndexError, ValueError):
+        await update.message.reply_text("Usage: /add 2.3")
+
+# --- Main setup ---
+def main():
+    app = ApplicationBuilder().token(TELEGRAM_BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("signal", signal))
+    app.add_handler(CommandHandler("add", add))
+
+    print("AviatorBot is running...")
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
